@@ -1,7 +1,8 @@
 {
-  "title": "roop-unleashed-2",
-  "description": "Uncensored Deepfakes for images and videos without training and an easy-to-use GUI.",
+  "title": "roop-unleashed-improved",
+  "description": "Uncensored face swapping for images and videos without training and an easy-to-use GUI.",
   "plugin": {
     "menu": []
-  }
+  },
+  "icon": "icon.jpg"
 }
