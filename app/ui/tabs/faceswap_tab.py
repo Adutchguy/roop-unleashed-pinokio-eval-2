@@ -38,6 +38,65 @@ current_video_fps = 50
 manual_masking = False
 
 
+def save_current_settings(
+    max_dist, blend, enhancer, erosion, blur, steps, autorot, skip_aud, noface_act, vrmode, preview_swap, mask_engine, upscale
+):
+    try:
+        roop.globals.CFG.max_face_distance  = max_dist
+        roop.globals.CFG.blend_ratio        = blend
+        roop.globals.CFG.selected_enhancer  = enhancer
+        roop.globals.CFG.mask_erosion       = erosion
+        roop.globals.CFG.mask_blur          = blur
+        roop.globals.CFG.num_swap_steps     = steps
+        roop.globals.CFG.autorotate         = autorot
+        roop.globals.CFG.skip_audio         = skip_aud
+        roop.globals.CFG.no_face_action     = noface_act
+        roop.globals.CFG.vr_mode            = vrmode
+        roop.globals.CFG.preview_swap_enabled = preview_swap
+        roop.globals.CFG.selected_mask_engine = mask_engine
+        roop.globals.CFG.subsample_upscale = upscale
+
+        roop.globals.CFG.save()
+        return "Settings saved to config.yaml"
+    except Exception as e:
+        return f"Save failed: {str(e)}"
+
+
+def reset_to_saved_settings():
+    try:
+        roop.globals.CFG.load()
+
+        roop.globals.distance_threshold = roop.globals.CFG.max_face_distance
+        roop.globals.blend_ratio        = roop.globals.CFG.blend_ratio
+        roop.globals.selected_enhancer  = roop.globals.CFG.selected_enhancer
+        roop.globals.mask_erosion       = roop.globals.CFG.mask_erosion
+        roop.globals.mask_blur          = roop.globals.CFG.mask_blur
+        roop.globals.num_swap_steps     = roop.globals.CFG.num_swap_steps
+        roop.globals.autorotate_faces   = roop.globals.CFG.autorotate
+        roop.globals.skip_audio         = roop.globals.CFG.skip_audio
+
+        # Removed the two problematic lines
+        # roop.globals.no_face_action = roop.globals.CFG.no_face_action   # ← not in Settings
+        # roop.globals.vr_mode        = roop.globals.CFG.vr_mode         # ← not in Settings
+
+        return (
+            "Settings reset to saved values",
+            roop.globals.CFG.max_face_distance,
+            roop.globals.CFG.blend_ratio,
+            roop.globals.CFG.selected_enhancer,
+            roop.globals.CFG.mask_erosion,
+            roop.globals.CFG.mask_blur,
+            roop.globals.CFG.num_swap_steps,
+            roop.globals.CFG.autorotate,
+            roop.globals.CFG.skip_audio,
+            roop.globals.CFG.preview_swap_enabled,
+            roop.globals.CFG.selected_mask_engine,
+            roop.globals.CFG.subsample_upscale
+            # Removed two None placeholders
+        )
+    except Exception as e:
+        return f"Reset failed: {str(e)}", None, None, None, None, None, None, None, None
+
 def faceswap_tab():
     global no_face_choices, previewimage
 
@@ -124,7 +183,7 @@ def faceswap_tab():
                             )
                             selected_mask_engine = gr.Dropdown(
                                 ["None", "Clip2Seg", "DFL XSeg"],
-                                value="None",
+                                value=roop.globals.selected_mask_engine,   # ← use saved value on startup
                                 label="Face masking engine",
                             )
                             clip_text = gr.Textbox(
@@ -149,7 +208,11 @@ def faceswap_tab():
                 maskimage = gr.ImageEditor(label="Manual mask Image", sources=["clipboard"], transforms="", type="numpy",
                                              brush=gr.Brush(color_mode="fixed", colors=["rgba(255, 255, 255, 1"]), interactive=True, visible=False)
                 with gr.Row(variant='panel'):
-                    fake_preview = gr.Checkbox(label="Face swap frames", value=False)
+                    fake_preview = gr.Checkbox(
+                        label="Face swap frames",
+                        value=roop.globals.preview_swap_enabled,   # ← use saved value on startup
+                        interactive=True
+                    )
                     bt_refresh_preview = gr.Button("🔄 Refresh", variant='secondary', size='sm')
                     bt_use_face_from_preview = gr.Button("Use Face from this Frame", variant='primary', size='sm')
                 with gr.Row():
@@ -177,9 +240,19 @@ def faceswap_tab():
 
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                max_face_distance = gr.Slider(0.01, 1.0, value=0.65, label="Max Face Similarity Threshold", info="0.0 = identical 1.0 = no similarity")
+                max_face_distance = gr.Slider(
+                    0.01, 1.0, 
+                    value=0.65, 
+                    label="Max Face Distance Threshold", 
+                    info="0.0 = Near 1.0 = Far"
+                )
             with gr.Column(scale=1):
-                ui.globals.ui_upscale = gr.Dropdown(["128px", "256px", "512px"], value="128px", label="Subsample upscale to", interactive=True)
+                ui.globals.ui_upscale = gr.Dropdown(
+                    ["128px", "256px", "512px"],
+                    value=roop.globals.subsample_upscale,   # ← load saved value
+                    label="Subsample upscale to",
+                    interactive=True
+                )
             with gr.Column(scale=2):
                 ui.globals.ui_blend_ratio = gr.Slider(0.0, 1.0, value=0.65, label="Original/Enhanced image blend ratio", info="Only used with active post-processing")
 
@@ -203,6 +276,19 @@ def faceswap_tab():
                 gr.Button("👀 Open Output Folder", size='sm').click(fn=lambda: util.open_folder(roop.globals.output_path))
             with gr.Column(scale=2):
                 output_method = gr.Dropdown(["File","Virtual Camera", "Both"], value="File", label="Select Output Method", interactive=True)
+        with gr.Row(variant='panel'):
+            with gr.Column(scale=1):
+                save_settings_btn = gr.Button("💾 Save Current Settings", variant="primary")
+            with gr.Column(scale=1):
+                reset_settings_btn = gr.Button("🔄 Reset to Saved", variant="secondary")
+            with gr.Column(scale=3):
+                settings_status = gr.Textbox(
+                    label="Status",
+                    value="",
+                    interactive=False,
+                    lines=1,
+                    visible=True
+                )
         with gr.Row(variant='panel'):
             with gr.Column():
                 resultfiles = gr.Files(label='Processed File(s)', interactive=False)
@@ -265,6 +351,44 @@ def faceswap_tab():
     set_frame_start.click(fn=on_set_frame, inputs=[set_frame_start, preview_frame_num], outputs=[text_frame_clip])
     set_frame_end.click(fn=on_set_frame, inputs=[set_frame_end, preview_frame_num], outputs=[text_frame_clip])
 
+# Settings save / reset handlers
+    save_settings_btn.click(
+        fn=save_current_settings,
+        inputs=[
+        max_face_distance,               # current slider value
+        ui.globals.ui_blend_ratio,       # current blend slider value
+        ui.globals.ui_selected_enhancer, # current dropdown selection
+        mask_erosion,
+        mask_blur,
+        num_swap_steps,
+        autorotate,
+        roop.globals.skip_audio,
+        no_face_action,
+        vr_mode,
+        fake_preview,
+        selected_mask_engine,
+        ui.globals.ui_upscale
+    ],
+        outputs=settings_status
+    )
+
+    reset_settings_btn.click(
+        fn=reset_to_saved_settings,
+        outputs=[
+            settings_status,
+            max_face_distance,
+            ui.globals.ui_blend_ratio,
+            ui.globals.ui_selected_enhancer,
+            mask_erosion,
+            mask_blur,
+            num_swap_steps,
+            autorotate,
+            roop.globals.skip_audio,
+            fake_preview,
+            selected_mask_engine,
+            ui.globals.ui_upscale
+        ]
+    )
 
 def on_mask_top_changed(mask_offset):
     set_mask_offset(0, mask_offset)

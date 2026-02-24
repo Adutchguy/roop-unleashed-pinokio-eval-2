@@ -52,6 +52,7 @@
 # ML model files (.onnk / .onnx) – large binaries
 # ───────────────────────────────────────────────
 *.onnx
+*.pth
 
 # ───────────────────────────────────────────────
 # Optional: catch other large binary media / assets
@@ -67,3 +68,9 @@
 *.fbx
 *.obj      # 3D models – binary variants
 *.max
+app/models/DMDNet.pth
+app/models/GFPGANv1.4.onnx
+app/models/GPEN-BFR-512.onnx
+app/models/inswapper_128.onnx
+app/models/restoreformer_plus_plus.onnx
+app/models/xseg.onnx

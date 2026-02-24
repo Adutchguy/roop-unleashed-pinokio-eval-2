@@ -33,9 +33,10 @@ face_swap_mode = None
 blend_ratio = 0.5
 distance_threshold = 0.65
 default_det_size = True
+subsample_upscale = "128px"
 
 no_face_action = 0
-
+selected_mask_engine = "None"  # default value
 processing = False
 
 g_current_face_analysis = None
