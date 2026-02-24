@@ -111,7 +111,6 @@ def limit_resources() -> None:
             resource.setrlimit(resource.RLIMIT_DATA, (memory, memory))
 
 
-
 def release_resources() -> None:
     import gc
     global process_mgr
@@ -155,6 +154,7 @@ def pre_check() -> bool:
        update_status('ffmpeg is not installed.')
     return True
 
+
 def set_display_ui(function):
     global call_display_ui
 
@@ -169,17 +169,54 @@ def update_status(message: str) -> None:
         call_display_ui(message)
 
 
+def apply_cfg_to_globals():
+    """
+    Apply all saved settings from roop.globals.CFG to the live roop.globals variables.
+    This ensures UI sliders, checkboxes, etc. reflect saved values on startup,
+    and processing uses the persisted config.
+    """
+    # UI & Server Preferences
+    roop.globals.server_name   = roop.globals.CFG.server_name
+    roop.globals.server_port   = roop.globals.CFG.server_port
+    roop.globals.server_share  = roop.globals.CFG.server_share
+    roop.globals.launch_browser = roop.globals.CFG.launch_browser  # if used elsewhere
+
+    # Output & File Handling
+    roop.globals.output_image_format = roop.globals.CFG.output_image_format
+    roop.globals.output_video_format = roop.globals.CFG.output_video_format
+    roop.globals.output_video_codec  = roop.globals.CFG.output_video_codec
+    roop.globals.video_quality       = roop.globals.CFG.video_quality
+    roop.globals.output_template     = roop.globals.CFG.output_template
+    roop.globals.use_os_temp_folder  = roop.globals.CFG.use_os_temp_folder
+    roop.globals.output_show_video   = roop.globals.CFG.output_show_video
+    roop.globals.clear_output        = roop.globals.CFG.clear_output
+
+    # Performance & Execution
+    roop.globals.execution_threads = roop.globals.CFG.max_threads
+    roop.globals.max_memory        = roop.globals.CFG.memory_limit if roop.globals.CFG.memory_limit > 0 else None
+
+    # Provider logic (preserve CLI/override priority if needed)
+    if roop.globals.CFG.provider:
+        roop.globals.execution_provider = [roop.globals.CFG.provider]  # or adjust based on your decode logic
+    if roop.globals.CFG.force_cpu:
+        roop.globals.execution_provider = ['cpu']
+
+    # Faceswap & Quality Controls
+    roop.globals.distance_threshold = roop.globals.CFG.max_face_distance
+    roop.globals.blend_ratio        = roop.globals.CFG.blend_ratio
+    roop.globals.selected_enhancer  = roop.globals.CFG.selected_enhancer
+    roop.globals.mask_erosion       = roop.globals.CFG.mask_erosion
+    roop.globals.mask_blur          = roop.globals.CFG.mask_blur
+    roop.globals.num_swap_steps     = roop.globals.CFG.num_swap_steps
+    roop.globals.autorotate_faces   = roop.globals.CFG.autorotate   # assuming global var name
+    roop.globals.skip_audio         = roop.globals.CFG.skip_audio
+    roop.globals.preview_swap_enabled = roop.globals.CFG.preview_swap_enabled
+    roop.globals.selected_mask_engine = roop.globals.CFG.selected_mask_engine
 
 
 def start() -> None:
     if roop.globals.headless:
         print('Headless mode currently unsupported - starting UI!')
-        # faces = extract_face_images(roop.globals.source_path,  (False, 0))
-        # roop.globals.INPUT_FACES.append(faces[roop.globals.source_face_index])
-        # faces = extract_face_images(roop.globals.target_path,  (False, util.has_image_extension(roop.globals.target_path)))
-        # roop.globals.TARGET_FACES.append(faces[roop.globals.target_face_index])
-        # if 'face_enhancer' in roop.globals.frame_processors:
-        #     roop.globals.selected_enhancer = 'GFPGAN'
        
     batch_process_regular(None, False, None)
 
@@ -211,8 +248,6 @@ def live_swap(frame, options):
     if process_mgr is None:
         process_mgr = ProcessMgr(None)
     
-#    if len(roop.globals.INPUT_FACESETS) <= selected_index:
-#        selected_index = 0
     process_mgr.initialize(roop.globals.INPUT_FACESETS, roop.globals.TARGET_FACES, options)
     newframe = process_mgr.process_frame(frame)
     if newframe is None:
@@ -237,6 +272,7 @@ def batch_process_regular(output_method, files:list[ProcessEntry], masking_engin
     batch_process(output_method, files, use_new_method)
     return
 
+
 def batch_process_with_options(files:list[ProcessEntry], options, progress):
     global clip_text, process_mgr
 
@@ -249,7 +285,6 @@ def batch_process_with_options(files:list[ProcessEntry], options, progress):
     roop.globals.wait_after_extraction = False
     roop.globals.skip_audio = False
     batch_process("Files", files, True)
-
 
 
 def batch_process(output_method, files:list[ProcessEntry], use_new_method) -> None:
@@ -267,7 +302,6 @@ def batch_process(output_method, files:list[ProcessEntry], use_new_method) -> No
            
     update_status('Sorting videos/images')
 
-
     for index, f in enumerate(files):
         fullname = f.filename
         if util.has_image_extension(fullname):
@@ -281,8 +315,6 @@ def batch_process(output_method, files:list[ProcessEntry], use_new_method) -> No
             destination = util.get_destfilename_from_path(fullname, roop.globals.output_path, f'__temp.{roop.globals.CFG.output_video_format}')
             f.finalname = destination
             videofiles.append(f)
-
-
 
     if(len(imagefiles) > 0):
         update_status('Processing image(s)')
@@ -394,11 +426,15 @@ def run() -> None:
     if not pre_check():
         return
     roop.globals.CFG = Settings('config.yaml')
+    
+    # NEW: Apply saved config values to live globals (UI & processing will use them)
+    apply_cfg_to_globals()
+    
     roop.globals.cuda_device_id = roop.globals.startup_args.cuda_device_id
-    roop.globals.execution_threads = roop.globals.CFG.max_threads
-    roop.globals.video_encoder = roop.globals.CFG.output_video_codec
-    roop.globals.video_quality = roop.globals.CFG.video_quality
-    roop.globals.max_memory = roop.globals.CFG.memory_limit if roop.globals.CFG.memory_limit > 0 else None
+    roop.globals.subsample_upscale = roop.globals.CFG.subsample_upscale
+    
+    # Keep your existing overrides (they take priority over saved if set via args)
     if roop.globals.startup_args.server_share:
         roop.globals.CFG.server_share = True
+    
     main.run()
