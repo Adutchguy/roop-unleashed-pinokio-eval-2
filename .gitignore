@@ -1,0 +1,43 @@
+# Images - common raster formats
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.tif
+*.ico
+*.heic
+*.avif
+
+# Videos - common formats
+*.mp4
+*.mkv
+*.webm
+*.avi
+*.mov
+*.wmv
+*.flv
+*.mpeg
+*.mpg
+*.m4v
+*.3gp
+
+# Also ignore any thumbnails or temp media files often created by tools
+Thumbs.db
+.DS_Store
+*.thumb.*
+preview.*
+sample.*
+test_clip.*
+output_preview.*
+
+# Optional: ignore entire folders that usually contain media
+# (uncomment if you have these and don't want any media in them tracked)
+# media/
+# images/
+# videos/
+# output/
+# temp/
+# downloads/
