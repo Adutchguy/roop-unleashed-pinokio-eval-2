@@ -1,0 +1,69 @@
+# ───────────────────────────────────────────────
+# Images (common raster & some vector formats)
+# ───────────────────────────────────────────────
+*.jpg
+*.jpeg
+*.jpe
+*.png
+*.gif
+*.webp
+*.bmp
+*.tif
+*.tiff
+*.ico
+*.heic
+*.heif
+*.svg     # ← usually text, but ignore if you're not versioning them
+*.psd
+*.ai
+*.eps
+*.raw
+*.cr2
+*.nef
+
+# ───────────────────────────────────────────────
+# Videos & audio/video containers
+# ───────────────────────────────────────────────
+*.mp4
+*.m4v
+*.mov
+*.avi
+*.wmv
+*.flv
+*.webm
+*.mkv
+*.mpg
+*.mpeg
+*.3gp
+*.ogv
+*.ts
+*.m2ts
+*.vob
+
+# Audio often travels with video projects
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.ogg
+
+# ───────────────────────────────────────────────
+# ML model files (.onnk / .onnx) – large binaries
+# ───────────────────────────────────────────────
+*.onnx
+
+# ───────────────────────────────────────────────
+# Optional: catch other large binary media / assets
+# ───────────────────────────────────────────────
+*.zip
+*.rar
+*.7z
+*.tar.gz
+*.bin
+*.dat
+*.pdf      # if you don't version documents
+*.blend    # Blender files (very common large binary)
+*.fbx
+*.obj      # 3D models – binary variants
+*.max
