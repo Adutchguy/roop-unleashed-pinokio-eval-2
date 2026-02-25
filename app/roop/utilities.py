@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import List, Any
 from tqdm import tqdm
 from scipy.spatial import distance
+from datetime import datetime
 
 import roop.template_parser as template_parser
 
@@ -128,10 +129,25 @@ def replace_template(file_path: str, index: int = 0) -> str:
     # Remove the "__temp" placeholder that was used as a temporary filename
     fn = fn.replace("__temp", "")
 
+    now = datetime.now()
+
+    # Prepare timestamp variables (customize formats as needed)
+    timestamp_full = now.strftime("%Y%m%d_%H%M%S")      # e.g., 20260224_173045 (recommended for uniqueness)
+    timestamp_short = now.strftime("%Y%m%d_%H%M")        # e.g., 20260224_1730
+    date_only = now.strftime("%Y%m%d")                   # e.g., 20260224
+
     template = roop.globals.CFG.output_template
-    replaced_filename = template_parser.parse(
-        template, {"index": str(index), "file": fn}
-    )
+
+    # Pass timestamp vars to the template parser context
+    context = {
+        "index": str(index),
+        "file": fn,
+        "timestamp": timestamp_full,       # main one to use in template
+        "timestamp_short": timestamp_short,
+        "date": date_only
+    }
+
+    replaced_filename = template_parser.parse(template, context)
 
     return os.path.join(roop.globals.output_path, f"{replaced_filename}{ext}")
 

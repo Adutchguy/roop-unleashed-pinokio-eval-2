@@ -80,15 +80,36 @@ def decode_execution_providers(execution_providers: List[str]) -> List[str]:
 
 def suggest_max_memory() -> int:
     if platform.system().lower() == 'darwin':
-        return 4
-    return 16
+        return 7
+    return 8
 
 
 def suggest_execution_providers() -> List[str]:
-    return encode_execution_providers(onnxruntime.get_available_providers())
+    # Original: return encode_execution_providers(onnxruntime.get_available_providers())
+    
+    # New: Force preferred GPU provider(s) first (as encoded names), then fallback to CPU
+    available = onnxruntime.get_available_providers()
+    encoded = []
+    
+    # Order matters: first in this list becomes highest priority in decoded providers
+    if 'TensorrtExecutionProvider' in available:
+        encoded.append('tensorrt')          # fastest on supported NVIDIA cards (RTX 30/40/50 series with TensorRT installed)
+    if 'CUDAExecutionProvider' in available:
+        encoded.append('cuda')              # standard NVIDIA GPU acceleration
+    encoded.append('cpu')                   # safe fallback if no GPU detected
+    
+    # Optional: add other providers if relevant (e.g., for AMD/Intel)
+    # if 'ROCMExecutionProvider' in available:
+    #     encoded.append('rocm')
+    # if 'DmlExecutionProvider' in available:
+    #     encoded.append('dml')
+    
+    return encoded
 
 
 def suggest_execution_threads() -> int:
+    if 'CUDAExecutionProvider' in roop.globals.execution_providers or 'TensorrtExecutionProvider' in roop.globals.execution_providers:
+        return 1
     if 'DmlExecutionProvider' in roop.globals.execution_providers:
         return 1
     if 'ROCMExecutionProvider' in roop.globals.execution_providers:
@@ -120,10 +141,10 @@ def release_resources() -> None:
         process_mgr = None
 
     gc.collect()
-    # if 'CUDAExecutionProvider' in roop.globals.execution_providers and torch.cuda.is_available():
-    #     with torch.cuda.device('cuda'):
-    #         torch.cuda.empty_cache()
-    #         torch.cuda.ipc_collect()
+    if 'CUDAExecutionProvider' in roop.globals.execution_providers and torch.cuda.is_available():
+        with torch.cuda.device('cuda'):
+            torch.cuda.empty_cache()
+            torch.cuda.ipc_collect()
 
 
 def pre_check() -> bool:
@@ -186,7 +207,13 @@ def apply_cfg_to_globals():
     roop.globals.output_video_format = roop.globals.CFG.output_video_format
     roop.globals.output_video_codec  = roop.globals.CFG.output_video_codec
     roop.globals.video_quality       = roop.globals.CFG.video_quality
-    roop.globals.output_template     = roop.globals.CFG.output_template
+    
+    # Set output_template: use saved config if present, otherwise default with timestamp
+    if roop.globals.CFG.output_template:
+        roop.globals.output_template = roop.globals.CFG.output_template
+    else:
+        roop.globals.output_template = "{file}_{timestamp}"
+    
     roop.globals.use_os_temp_folder  = roop.globals.CFG.use_os_temp_folder
     roop.globals.output_show_video   = roop.globals.CFG.output_show_video
     roop.globals.clear_output        = roop.globals.CFG.clear_output
