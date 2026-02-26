@@ -1,2 +1,2 @@
-name = 'roop unleashed'
-version = '4.3.1'
+name = 'roop unleashed and improved'
+version = '1.3'
