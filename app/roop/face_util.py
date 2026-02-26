@@ -212,18 +212,32 @@ arcface_dst = np.array(
 
 def estimate_norm(lmk, image_size=112):
     assert lmk.shape == (5, 2)
+    
+    # Default scaling from ArcFace 112px base
+    ratio = float(image_size) / 112.0
+    diff_x = 0.0
+    
+    # Legacy exact multiples (keep for compatibility)
     if image_size % 112 == 0:
         ratio = float(image_size) / 112.0
-        diff_x = 0
+        diff_x = 0.0
     elif image_size % 128 == 0:
         ratio = float(image_size) / 128.0
         diff_x = 8.0 * ratio
     elif image_size % 512 == 0:
         ratio = float(image_size) / 512.0
         diff_x = 32.0 * ratio
-
+    elif image_size == 1024:
+        ratio = 1024.0 / 112.0
+        diff_x = 0.0
+    
+    # Fallback for any other size (safe proportional scaling)
+    else:
+        print(f"Warning: Non-standard alignment size {image_size}px — using 112-scale fallback")
+    
     dst = arcface_dst * ratio
     dst[:, 0] += diff_x
+    
     tform = trans.SimilarityTransform()
     tform.estimate(lmk, dst)
     M = tform.params[0:2, :]

@@ -559,36 +559,40 @@ class ProcessMgr():
                     target_face = rotface
 
 
-
-        # if roop.globals.vr_mode:
-            # bbox = target_face.bbox
-            # [orig_width, orig_height, _] = frame.shape
-
-            # # Convert bounding box to ints
-            # x1, y1, x2, y2 = map(int, bbox)
-
-            # # Determine the center of the bounding box
-            # x_center = (x1 + x2) / 2
-            # y_center = (y1 + y2) / 2
-
-            # # Normalize coordinates to range [-1, 1]
-            # x_center_normalized = x_center / (orig_width / 2) - 1
-            # y_center_normalized = y_center / (orig_width / 2) - 1
-
-            # # Convert normalized coordinates to spherical (theta, phi)
-            # theta = x_center_normalized * 180  # Theta ranges from -180 to 180 degrees
-            # phi = -y_center_normalized * 90  # Phi ranges from -90 to 90 degrees
-
-            # img = vr.GetPerspective(frame, 90, theta, phi, 1280, 1280)  # Generate perspective image
-
-
-        """ Code ported/adapted from Facefusion which borrowed the idea from Rope:
-            Kind of subsampling the cutout and aligned face image and faceswapping slices of it up to
-            the desired output resolution. This works around the current resolution limitations without using enhancers.
-        """
         model_output_size = 128
         subsample_size = self.options.subsample_size
+
+        # Quality mode + strong safeguards
+        enhancer_strength = 0.6  # default
+        if hasattr(self.options, 'face_quality'):
+            mode = self.options.face_quality
+            print(f"Applying Face Quality Mode: {mode}")
+            if mode == "Ultra":
+                subsample_size = 512          # Cap at 512 — 1024 often causes paste artefacts
+                enhancer_strength = 1.0
+                roop.globals.blend_ratio = 1.0   # full enhancement
+            elif mode == "High":
+                subsample_size = 512
+                enhancer_strength = 0.85
+                roop.globals.blend_ratio = 0.85
+            else:  # Balanced or unknown
+                subsample_size = self.options.subsample_size
+                enhancer_strength = 0.6
+                roop.globals.blend_ratio = 0.65
+
+        # Final validation: must be >=128, multiple of 128, max 512 for reliability
+        if subsample_size < 128 or subsample_size % 128 != 0:
+            old = subsample_size
+            subsample_size = max(128, (subsample_size // 128) * 128)
+            print(f"Adjusted subsample_size from {old}px → {subsample_size}px (must be valid multiple of 128)")
+        if subsample_size > 512:
+            print(f"Capping subsample_size from {subsample_size}px → 512px (higher causes grey-box/paste issues)")
+            subsample_size = 512
+
         subsample_total = subsample_size // model_output_size
+
+        print(f"Final: Subsample {subsample_size}px, Tiles {subsample_total}x{subsample_total}, Strength {enhancer_strength}")
+
         aligned_img, M = align_crop(frame, target_face.kps, subsample_size)
 
         fake_frame = aligned_img

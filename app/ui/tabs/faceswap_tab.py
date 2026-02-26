@@ -683,7 +683,18 @@ def on_preview_frame_changed(frame_num, files, fake_preview, enhancer, detection
     roop.globals.no_face_action = index_of_no_face_action(no_face_action)
     roop.globals.vr_mode = vr_mode
     roop.globals.autorotate_faces = auto_rotate
-    roop.globals.subsample_size = int(upsample[:3])
+    # Safe parsing of subsample UI value
+    try:
+        subsample_str = upsample.replace("px", "").strip()
+        roop.globals.subsample_size = int(subsample_str)
+        if roop.globals.subsample_size not in [128, 256, 512, 1024]:
+            print(f"Warning: Invalid subsample '{upsample}' — defaulting to 256px")
+            roop.globals.subsample_size = 256
+    except Exception as e:
+        print(f"Subsample parse error '{upsample}': {e} — defaulting to 256px")
+        roop.globals.subsample_size = 256
+
+    print(f"Parsed subsample_size from UI: {roop.globals.subsample_size}px")
 
 
     mask_engine = map_mask_engine(selected_mask_engine, clip_text)
@@ -833,7 +844,18 @@ def start_swap( output_method, enhancer, detection, keep_frames, wait_after_extr
     roop.globals.no_face_action = index_of_no_face_action(no_face_action)
     roop.globals.vr_mode = vr_mode
     roop.globals.autorotate_faces = autorotate
-    roop.globals.subsample_size = int(upsample[:3])
+    # Safe parsing of subsample UI value
+    try:
+        subsample_str = upsample.replace("px", "").strip()
+        roop.globals.subsample_size = int(subsample_str)
+        if roop.globals.subsample_size not in [128, 256, 512, 1024]:
+            print(f"Warning: Invalid subsample '{upsample}' — defaulting to 256px")
+            roop.globals.subsample_size = 256
+    except Exception as e:
+        print(f"Subsample parse error '{upsample}': {e} — defaulting to 256px")
+        roop.globals.subsample_size = 256
+
+    print(f"Parsed subsample_size from UI: {roop.globals.subsample_size}px")
     mask_engine = map_mask_engine(selected_mask_engine, clip_text)
 
     if roop.globals.face_swap_mode == 'selected':
