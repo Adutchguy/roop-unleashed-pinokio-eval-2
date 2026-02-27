@@ -74,4 +74,4 @@ app/models/GPEN-BFR-512.onnx
 app/models/inswapper_128.onnx
 app/models/restoreformer_plus_plus.onnx
 app/models/xseg.onnx
-!Flow_Diagram.svg
+!Workflow_Diagram.png
