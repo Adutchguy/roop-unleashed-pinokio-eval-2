@@ -236,7 +236,13 @@ def faceswap_tab():
             with gr.Column(scale=1):
                 num_swap_steps = gr.Slider(1, 5, value=1, step=1.0, label="Number of swapping steps", info="More steps may increase likeness")
             with gr.Column(scale=2):
-                ui.globals.ui_selected_enhancer = gr.Dropdown(["None", "Codeformer", "DMDNet", "GFPGAN", "GPEN", "Restoreformer++"], value="None", label="Select post-processing")
+                ui.globals.ui_selected_enhancer = gr.Dropdown(["None", "Codeformer", "DMDNet", "GFPGAN", "GPEN", "Restoreformer++"], value="GPEN", label="Select post-processing")
+                ui.globals.ui_face_quality = gr.Dropdown(
+                    choices=["Balanced", "High", "Ultra"],
+                    value="Balanced",
+                    label="Face Quality Mode",
+                    info="High/Ultra = sharper faces, less pixelation (slower)"
+                )
 
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
@@ -254,7 +260,7 @@ def faceswap_tab():
                     interactive=True
                 )
             with gr.Column(scale=2):
-                ui.globals.ui_blend_ratio = gr.Slider(0.0, 1.0, value=0.65, label="Original/Enhanced image blend ratio", info="Only used with active post-processing")
+                ui.globals.ui_blend_ratio = gr.Slider(0.0, 1.0, value=0.8, label="Original/Enhanced image blend ratio", info="Higher = stronger enhancement/sharpness")
 
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
@@ -297,7 +303,7 @@ def faceswap_tab():
                 resultvideo = gr.Video(label='Final Video', interactive=False, visible=False)
 
     previewinputs = [preview_frame_num, bt_destfiles, fake_preview, ui.globals.ui_selected_enhancer, selected_face_detection,
-                        max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text, no_face_action, vr_mode, autorotate, maskimage, chk_showmaskoffsets, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale]
+                 max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text, no_face_action, vr_mode, autorotate, maskimage, chk_showmaskoffsets, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale, ui.globals.ui_face_quality]
     previewoutputs = [previewimage, maskimage, preview_frame_num] 
     input_faces.select(on_select_input_face, None, None).success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs)
     
@@ -337,7 +343,7 @@ def faceswap_tab():
 
     start_event = bt_start.click(fn=start_swap, 
         inputs=[output_method, ui.globals.ui_selected_enhancer, selected_face_detection, roop.globals.keep_frames, roop.globals.wait_after_extraction,
-                    roop.globals.skip_audio, max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text,video_swapping_method, no_face_action, vr_mode, autorotate, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale, maskimage],
+            roop.globals.skip_audio, max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text,video_swapping_method, no_face_action, vr_mode, autorotate, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale, maskimage, ui.globals.ui_face_quality],
         outputs=[bt_start, bt_stop, resultfiles], show_progress='full')
     after_swap_event = start_event.success(fn=on_resultfiles_finished, inputs=[resultfiles], outputs=[resultimage, resultvideo])
 
@@ -636,10 +642,17 @@ def on_end_face_selection():
 
 
 def on_preview_frame_changed(frame_num, files, fake_preview, enhancer, detection, face_distance, blend_ratio,
-                              selected_mask_engine, clip_text, no_face_action, vr_mode, auto_rotate, maskimage, show_face_area, restore_original_mouth, num_steps, upsample):
+                              selected_mask_engine, clip_text, no_face_action, vr_mode, auto_rotate, maskimage, show_face_area, restore_original_mouth, num_steps, upsample, face_quality):
     global SELECTED_INPUT_FACE_INDEX, manual_masking, current_video_fps
 
     from roop.core import live_swap, get_processing_plugins
+
+    print(f"Preview using Face Quality: {face_quality}")
+    # If you want preview to use the mode's strength/subsample override, set globals here
+    if face_quality == "Ultra":
+        roop.globals.blend_ratio = 1.0
+    elif face_quality == "High":
+        roop.globals.blend_ratio = 0.85
 
     manual_masking = False
     mask_offsets = (0,0,0,0)
@@ -706,8 +719,9 @@ def on_preview_frame_changed(frame_num, files, fake_preview, enhancer, detection
         face_index = 0
    
     options = ProcessOptions(get_processing_plugins(mask_engine), roop.globals.distance_threshold, roop.globals.blend_ratio,
-                              roop.globals.face_swap_mode, face_index, clip_text, maskimage, num_steps, roop.globals.subsample_size, show_face_area, restore_original_mouth)
-
+                        roop.globals.face_swap_mode, face_index, clip_text, maskimage, num_steps, roop.globals.subsample_size, show_face_area, restore_original_mouth,
+                        face_quality=face_quality)
+    
     current_frame = live_swap(current_frame, options)
     if current_frame is None:
         return gr.Image(visible=True), None, gr.Slider(info=timeinfo)
@@ -816,10 +830,19 @@ def translate_swap_mode(dropdown_text):
 
 
 def start_swap( output_method, enhancer, detection, keep_frames, wait_after_extraction, skip_audio, face_distance, blend_ratio,
-                selected_mask_engine, clip_text, processing_method, no_face_action, vr_mode, autorotate, restore_original_mouth, num_swap_steps, upsample, imagemask, progress=gr.Progress()):
+                selected_mask_engine, clip_text, processing_method, no_face_action, vr_mode, autorotate, restore_original_mouth, num_swap_steps, upsample, imagemask, face_quality, progress=gr.Progress()):
     from ui.main import prepare_environment
     from roop.core import batch_process_regular
     global is_processing, list_files_process
+
+    # Optional: log the mode for debugging
+    print(f"Start swap using Face Quality: {face_quality}")
+
+    # If you want start_swap to override blend_ratio based on mode (recommended)
+    if face_quality == "Ultra":
+        roop.globals.blend_ratio = 1.0
+    elif face_quality == "High":
+        roop.globals.blend_ratio = 0.85
 
     if list_files_process is None or len(list_files_process) <= 0:
         return gr.Button(variant="primary"), None, None

@@ -564,7 +564,7 @@ class ProcessMgr():
 
         # Quality mode + strong safeguards
         enhancer_strength = 0.6  # default
-        if hasattr(self.options, 'face_quality'):
+        if hasattr(self.options, 'face_quality') and self.options.face_quality:
             mode = self.options.face_quality
             print(f"Applying Face Quality Mode: {mode}")
             if mode == "Ultra":
@@ -586,7 +586,7 @@ class ProcessMgr():
             subsample_size = max(128, (subsample_size // 128) * 128)
             print(f"Adjusted subsample_size from {old}px → {subsample_size}px (must be valid multiple of 128)")
         if subsample_size > 512:
-            print(f"Capping subsample_size from {subsample_size}px → 512px (higher causes grey-box/paste issues)")
+            print(f"Capping subsample_size from {subsample_size}px to 512px (higher values cause paste/grey-box issues)")
             subsample_size = 512
 
         subsample_total = subsample_size // model_output_size
