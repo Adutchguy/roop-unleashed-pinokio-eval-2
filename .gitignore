@@ -13,7 +13,7 @@
 *.ico
 *.heic
 *.svg
-*.heif     # ← usually text, but ignore if you're not versioning them
+*.heif
 *.psd
 *.ai
 *.eps
