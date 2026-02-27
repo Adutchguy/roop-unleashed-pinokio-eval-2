@@ -12,8 +12,8 @@
 *.tiff
 *.ico
 *.heic
-*.heif
-*.svg     # ← usually text, but ignore if you're not versioning them
+*.svg
+*.heif     # ← usually text, but ignore if you're not versioning them
 *.psd
 *.ai
 *.eps
@@ -74,3 +74,4 @@ app/models/GPEN-BFR-512.onnx
 app/models/inswapper_128.onnx
 app/models/restoreformer_plus_plus.onnx
 app/models/xseg.onnx
+!C:\pinokio\api\roop-unleashed-pinokio-eval-2\Flow Diagram.svg
