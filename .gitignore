@@ -74,4 +74,4 @@ app/models/GPEN-BFR-512.onnx
 app/models/inswapper_128.onnx
 app/models/restoreformer_plus_plus.onnx
 app/models/xseg.onnx
-!C:\pinokio\api\roop-unleashed-pinokio-eval-2\Flow Diagram.svg
+!Flow_Diagram.svg
