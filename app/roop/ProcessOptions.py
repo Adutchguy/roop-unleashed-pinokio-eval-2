@@ -1,6 +1,6 @@
 class ProcessOptions:
 
-    def __init__(self, processordefines:dict, face_distance,  blend_ratio, swap_mode, selected_index, masking_text, imagemask, num_steps, subsample_size, show_face_area, restore_original_mouth, show_mask=False, face_quality=None):
+    def __init__(self, processordefines:dict, face_distance,  blend_ratio, swap_mode, selected_index, masking_text, imagemask, num_steps, subsample_size, show_face_area, restore_original_mouth, show_mask=False, face_quality=None, video_segmentation=None, grounding_prompt="face"):
         self.processors = processordefines
         self.face_distance_threshold = face_distance
         self.blend_ratio = blend_ratio
@@ -15,3 +15,5 @@ class ProcessOptions:
         self.restore_original_mouth = restore_original_mouth
         self.max_num_reuse_frame = 15
         self.face_quality = face_quality
+        self.video_segmentation = video_segmentation
+        self.grounding_prompt = grounding_prompt

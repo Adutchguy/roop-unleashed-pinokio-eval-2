@@ -215,7 +215,6 @@ https://github.com/s0md3v/roop<br />
 https://github.com/AUTOMATIC1111/stable-diffusion-webui<br /> 
 https://github.com/Hillobar/Rope<br />
 https://github.com/TencentARC/GFPGAN<br />   
-https://github.com/kadirnar/codeformer-pip<br />
 https://github.com/csxmli2016/DMDNet<br />
 https://github.com/glucauze/sd-webui-faceswaplab<br />
 https://github.com/ykk648/face_power<br />
