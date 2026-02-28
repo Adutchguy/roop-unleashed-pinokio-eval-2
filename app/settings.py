@@ -6,7 +6,7 @@ class Settings:
         self.config_file = config_file
         self.load()
 
-    def default_get(self, data, name, default):  # Made it an instance method (removed unused _)
+    def default_get(self, data, name, default):
         try:
             return data.get(name, default)
         except:
@@ -18,7 +18,8 @@ class Settings:
                 data = yaml.load(f, Loader=yaml.FullLoader) or {}
         except:
             data = {}
-# ───────────────────────────────────────────────
+
+        # ───────────────────────────────────────────────
         # UI & Server Preferences
         # ───────────────────────────────────────────────
         self.selected_theme     = self.default_get(data, 'selected_theme', "Default")
@@ -48,25 +49,19 @@ class Settings:
         self.force_cpu      = self.default_get(data, 'force_cpu', False)
 
         # ───────────────────────────────────────────────
-        # Faceswap & Quality Controls (your additions + extras)
+        # Faceswap & Quality Controls
         # ───────────────────────────────────────────────
-        self.max_face_distance  = self.default_get(data, 'max_face_distance', 0.65)
-        self.blend_ratio        = self.default_get(data, 'blend_ratio', 0.65)
-        self.selected_enhancer  = self.default_get(data, 'selected_enhancer', "None")
-        self.mask_erosion       = self.default_get(data, 'mask_erosion', 1.0)
-        self.mask_blur          = self.default_get(data, 'mask_blur', 20.0)
-        self.num_swap_steps     = self.default_get(data, 'num_swap_steps', 1)
-        self.autorotate         = self.default_get(data, 'autorotate', True)
-        self.skip_audio         = self.default_get(data, 'skip_audio', False)
-        self.preview_swap_enabled = self.default_get(data, 'preview_swap_enabled', False)
-        self.selected_mask_engine = self.default_get(data, 'selected_mask_engine', "None")
-        self.subsample_upscale = self.default_get(data, 'subsample_upscale', "128px")
-
-        # Optional extras you might want to add later:
-        # self.mask_engine     = self.default_get(data, 'mask_engine', "box")
-        # self.clip_text       = self.default_get(data, 'clip_text', "")
-        # self.no_face_action  = self.default_get(data, 'no_face_action', "skip")
-        # self.subsample_upscale = self.default_get(data, 'subsample_upscale', 1.0)
+        self.max_face_distance     = self.default_get(data, 'max_face_distance', 0.65)
+        self.blend_ratio           = self.default_get(data, 'blend_ratio', 0.65)
+        self.selected_enhancer     = self.default_get(data, 'selected_enhancer', "None")
+        self.mask_erosion          = self.default_get(data, 'mask_erosion', 1.0)
+        self.mask_blur             = self.default_get(data, 'mask_blur', 20.0)
+        self.num_swap_steps        = self.default_get(data, 'num_swap_steps', 1)
+        self.autorotate            = self.default_get(data, 'autorotate', True)
+        self.skip_audio            = self.default_get(data, 'skip_audio', False)
+        self.preview_swap_enabled  = self.default_get(data, 'preview_swap_enabled', False)
+        self.selected_mask_engine  = self.default_get(data, 'selected_mask_engine', "None")
+        self.subsample_upscale     = self.default_get(data, 'subsample_upscale', "128px")
 
     def save(self):
         data = {
