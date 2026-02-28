@@ -247,25 +247,29 @@ def start() -> None:
 
 
 def get_processing_plugins(masking_engine):
-    processors = { "faceswap": {} }
+    processors = {"faceswap": {}}
+    
+    processors["mask_groundedsam"] = {}
+    print("[FORCE DEBUG] Added mask_groundedsam regardless of UI selection")
 
-    if masking_engine is not None:
-        # Map UI name or internal key to the correct plugin key
-        internal_mask = masking_engine
-        if masking_engine in ["Clip2Seg", "mask_clip2seg"]:
-            internal_mask = "mask_clip2seg"
-        elif masking_engine in ["DFL XSeg", "mask_xseg"]:
-            internal_mask = "mask_xseg"
-        elif masking_engine in ["GroundedSAM", "mask_groundedsam"]:
-            internal_mask = "mask_groundedsam"
-        # Add future mask engines here
-
-        if internal_mask in ProcessMgr.plugins:  # ← use ProcessMgr.plugins
-            processors.update({internal_mask: {}})
+    if masking_engine and masking_engine != "None":
+        # Map UI dropdown label → actual plugin key used in ProcessMgr.plugins
+        mask_map = {
+            "Clip2Seg":    "mask_clip2seg",
+            "DFL XSeg":    "mask_xseg",
+            "GroundedSAM": "mask_groundedsam",
+            # Add any future engines here, e.g. "CustomSAM": "mask_customsam"
+        }
+        
+        plugin_key = mask_map.get(masking_engine, None)
+        
+        if plugin_key and plugin_key in ProcessMgr.plugins:
+            processors[plugin_key] = {}
+            print(f"[DEBUG core] Added mask processor '{plugin_key}' for UI engine '{masking_engine}'")
         else:
-            print(f"Warning: Unknown mask engine '{masking_engine}' (internal: '{internal_mask}') — skipping mask processor")
+            print(f"[WARNING core] No valid plugin mapping or unknown engine '{masking_engine}' — no mask processor loaded")
 
-    # enhancer logic (unchanged)
+    # Enhancer logic (unchanged from your version)
     if roop.globals.selected_enhancer == 'GFPGAN':
         processors.update({"gfpgan": {}})
     elif roop.globals.selected_enhancer == 'DMDNet':
@@ -275,11 +279,14 @@ def get_processing_plugins(masking_engine):
     elif roop.globals.selected_enhancer == 'Restoreformer++':
         processors.update({"restoreformer++": {}})
         
+    # Fallback / lower-case check (your existing safety net — keep if you want)
     enhancer_key = roop.globals.selected_enhancer.lower()
     if enhancer_key in ProcessMgr.plugins:
         processors.update({enhancer_key: {}})
     else:
         print(f"Warning: Unknown enhancer '{roop.globals.selected_enhancer}' — skipping")
+
+    print("Returning processors dict:", list(processors.keys()))
     return processors
 
 
