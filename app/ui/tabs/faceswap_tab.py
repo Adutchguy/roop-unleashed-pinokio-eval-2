@@ -68,9 +68,6 @@ def save_current_settings(
         roop.globals.CFG.preview_swap_enabled = preview_swap
         roop.globals.CFG.selected_mask_engine = mask_engine
         roop.globals.CFG.subsample_upscale = upscale
-        roop.globals.CFG.grounding_prompt = grounding #14
-
-        print(f"[UI DEBUG] Saved grounding_prompt = '{roop.globals.CFG.grounding_prompt}'")
 
         roop.globals.CFG.save()
         return "Settings saved to config.yaml"
@@ -90,7 +87,6 @@ def reset_to_saved_settings():
         roop.globals.num_swap_steps     = roop.globals.CFG.num_swap_steps
         roop.globals.autorotate_faces   = roop.globals.CFG.autorotate
         roop.globals.skip_audio         = roop.globals.CFG.skip_audio
-        roop.globals.grounding_prompt   = roop.globals.CFG.grounding_prompt
 
         # Removed the two problematic lines
         # roop.globals.no_face_action = roop.globals.CFG.no_face_action   # ← not in Settings
@@ -108,8 +104,7 @@ def reset_to_saved_settings():
             roop.globals.CFG.skip_audio,
             roop.globals.CFG.preview_swap_enabled,
             roop.globals.CFG.selected_mask_engine,
-            roop.globals.CFG.subsample_upscale,
-            roop.globals.CFG.grounding_prompt
+            roop.globals.CFG.subsample_upscale
             # Removed two None placeholders
         )
     except Exception as e:
@@ -200,7 +195,7 @@ def faceswap_tab():
                                 "Toggle manual masking", variant="secondary", size="sm"
                             )
                             selected_mask_engine = gr.Dropdown(
-                                ["None", "Clip2Seg", "DFL XSeg", "GroundedSAM"],
+                                ["None", "Clip2Seg", "DFL XSeg"],
                                 value=roop.globals.selected_mask_engine,   # ← use saved value on startup
                                 label="Face masking engine",
                             )
@@ -209,20 +204,6 @@ def faceswap_tab():
                                 value="Cutie",
                                 label="Video Segmentation for Consistency",
                                 interactive=True
-                            )
-                            grounding_prompt = gr.Textbox(
-                                value="facial skin, nose, lips, teeth, eyes, eyebrows, ears",
-                                label="GroundedSAM Prompt",
-                                placeholder="Describe the face region to mask",
-                                visible=True,  # visible by default
-                                interactive=True
-                            )
-
-                            # Show/hide the prompt box when mask engine changes
-                            selected_mask_engine.change(
-                                fn=lambda x: gr.update(visible=(x == "GroundedSAM")),
-                                inputs=selected_mask_engine,
-                                outputs=grounding_prompt
                             )
                             clip_text = gr.Textbox(
                                 label="List of objects to mask and restore back on fake face",
@@ -270,7 +251,7 @@ def faceswap_tab():
 
         with gr.Row(variant='panel'):
             with gr.Column(scale=1):
-                selected_face_detection = gr.Dropdown(swap_choices, value="First found", label="Specify face selection for swapping")
+                selected_face_detection = gr.Dropdown(swap_choices, value="All faces", label="Specify face selection for swapping")
             with gr.Column(scale=1):
                 num_swap_steps = gr.Slider(1, 5, value=1, step=1.0, label="Number of swapping steps", info="More steps may increase likeness")
             with gr.Column(scale=2):
@@ -286,7 +267,7 @@ def faceswap_tab():
             with gr.Column(scale=1):
                 max_face_distance = gr.Slider(
                     0.01, 1.0, 
-                    value=0.65, 
+                    value=1, 
                     label="Max Face Distance Threshold", 
                     info="0.0 = Near 1.0 = Far"
                 )
@@ -358,8 +339,7 @@ def faceswap_tab():
                         num_swap_steps, 
                         ui.globals.ui_upscale, 
                         ui.globals.ui_face_quality, 
-                        video_segmentation,
-                        grounding_prompt  #19
+                        video_segmentation
                      ]
     previewoutputs = [previewimage, maskimage, preview_frame_num] 
     input_faces.select(on_select_input_face, None, None).success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs)
@@ -415,8 +395,7 @@ def faceswap_tab():
                     ui.globals.ui_upscale, 
                     maskimage, 
                     ui.globals.ui_face_quality, 
-                    video_segmentation,
-                    grounding_prompt, #17
+                    video_segmentation
                 ],
         outputs=[bt_start, bt_stop, resultfiles], show_progress='full')
     after_swap_event = start_event.success(fn=on_resultfiles_finished, inputs=[resultfiles], outputs=[resultimage, resultvideo])
@@ -447,8 +426,7 @@ def faceswap_tab():
                     vr_mode,
                     fake_preview,
                     selected_mask_engine,
-                    ui.globals.ui_upscale,
-                    grounding_prompt #14
+                    ui.globals.ui_upscale
                 ],
                     outputs=settings_status
     )
@@ -467,8 +445,7 @@ def faceswap_tab():
             roop.globals.skip_audio,
             fake_preview,
             selected_mask_engine,
-            ui.globals.ui_upscale,
-            grounding_prompt #13
+            ui.globals.ui_upscale
         ]
     )
 
@@ -735,8 +712,7 @@ def on_preview_frame_changed(frame_num,
                              num_steps, 
                              upsample, 
                              face_quality,
-                             video_segmentation, 
-                             grounding_prompt  #20
+                             video_segmentation
                              ):
     global SELECTED_INPUT_FACE_INDEX, manual_masking, current_video_fps
 
@@ -827,8 +803,7 @@ def on_preview_frame_changed(frame_num,
         False,
         restore_original_mouth,
         face_quality=face_quality,
-        video_segmentation=video_segmentation, 
-        grounding_prompt=grounding_prompt #14
+        video_segmentation=video_segmentation
         )
     
     current_frame = live_swap(current_frame, options)
@@ -837,15 +812,21 @@ def on_preview_frame_changed(frame_num,
     return gr.Image(value=util.convert_to_gradio(current_frame), visible=True), gr.ImageEditor(visible=False), gr.Slider(info=timeinfo)
 
 def map_mask_engine(selected_mask_engine, clip_text):
+    print(f"[MASK DEBUG] UI selected engine: '{selected_mask_engine}'")
+
+    if selected_mask_engine == "None":
+        return None
+
     if selected_mask_engine == "Clip2Seg":
-        mask_engine = "mask_clip2seg"
-        if clip_text is None or len(clip_text) < 1:
-          mask_engine = None
-    elif selected_mask_engine == "DFL XSeg":
-        mask_engine = "mask_xseg"
-    else:
-        mask_engine = None
-    return mask_engine
+        if clip_text is None or len(clip_text.strip()) == 0:
+            return None
+        return "mask_clip2seg"
+
+    if selected_mask_engine == "DFL XSeg":
+        return "mask_xseg"
+
+    print(f"[MASK DEBUG] Unknown engine '{selected_mask_engine}' — no mask")
+    return None
 
 
 def on_toggle_masking(previewimage, mask):
@@ -957,7 +938,6 @@ def start_swap(output_method,
                upsample, 
                imagemask, 
                face_quality, 
-               grounding_prompt,
                video_segmentation,
                progress=gr.Progress()
                ):
@@ -1034,8 +1014,7 @@ def start_swap(output_method,
         num_swap_steps, 
         progress, 
         SELECTED_INPUT_FACE_INDEX, 
-        face_quality, 
-        grounding_prompt, 
+        face_quality,
         video_segmentation
         )
     is_processing = False
