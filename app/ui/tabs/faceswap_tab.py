@@ -212,7 +212,7 @@ def faceswap_tab():
                                 value="face, exclude tongue, exclude hair, exclude glasses",
                                 label="GroundedSAM Prompt",
                                 placeholder="Describe the face region to mask",
-                                visible=False,  # hidden by default
+                                visible=True,  # visible by default
                                 interactive=True
                             )
 
