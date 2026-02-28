@@ -6,6 +6,8 @@ import numpy as np
 from PIL import Image
 from typing import Any, Dict
 
+from typer import prompt
+
 # 1. Force Python to see the local GroundingDINO folder FIRST
 dino_path = os.path.abspath("GroundingDINO")
 if dino_path not in sys.path:
@@ -75,10 +77,13 @@ class Mask_GroundedSAM:
             raise RuntimeError("CLIPSeg initialization failed.")
 
     def Run(self, frame: np.ndarray, options: Any):
-        # 1. Determine the text prompt (default to "face")
-        prompt = "face"
-        if hasattr(options, 'masking_text'):
-            prompt = options.masking_text
+        # 1. Determine the text prompt from options (preferred) or fallback
+        prompt = getattr(options, 'grounding_prompt', "face").strip()
+        if not prompt:
+            prompt = "face"
+
+        print(f"[DEBUG GroundedSAM] Received options type: {type(options)}")
+        print(f"[DEBUG GroundedSAM] Using prompt from options: '{prompt}'")
 
         # 2. Prepare images
         # image_rgb is for SAM; image_transformed is for Grounding DINO
@@ -119,7 +124,10 @@ class Mask_GroundedSAM:
             
             # Scale the normalized DINO box back to the actual pixel size of your frame
             h, w, _ = frame.shape
-            input_box = boxes[0] * np.array([w, h, w, h])
+            if len(boxes) > 0:
+                best_idx = logits.argmax()
+                input_box = boxes[best_idx] * np.array([w, h, w, h])
+            # input_box = boxes[0] * np.array([w, h, w, h])
             
             # Generate the mask
             masks, _, _ = self.sam_predictor.predict(

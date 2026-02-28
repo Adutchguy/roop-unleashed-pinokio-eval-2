@@ -81,7 +81,7 @@ class ProcessMgr():
     output_to_cam = None
 
 
-    plugins =  { 
+    plugins = { 
     'faceswap'          : 'FaceSwapInsightFace',
     'mask_clip2seg'     : 'Mask_Clip2Seg',
     'mask_xseg'         : 'Mask_XSeg',
@@ -814,17 +814,30 @@ class ProcessMgr():
         return final_frame
 
     def process_mask(self, processor, frame:Frame, target:Frame):
-        img_mask = processor.Run(frame, self.options.masking_text)
+        # Choose the appropriate text/prompt based on the current mask engine
+        engine = roop.globals.CFG.selected_mask_engine or "None"
+        
+        if engine == "GroundedSAM":
+            text_input = self.options.grounding_prompt if hasattr(self.options, 'grounding_prompt') else "face"
+        else:
+            # For Clip2Seg, DFL XSeg, or others that use the older masking_text field
+            text_input = self.options.masking_text if hasattr(self.options, 'masking_text') else ""
+        
+        # Debug print to confirm what's being passed (remove later if desired)
+        print(f"[DEBUG ProcessMgr.process_mask] Engine: {engine} | Passing input: '{text_input}' to {processor.processorname}")
+        
+        # Call the processor with the string input (not the full options object)
+        img_mask = processor.Run(frame, text_input)
+        
         img_mask = cv2.resize(img_mask, (target.shape[1], target.shape[0]))
-        img_mask = np.reshape(img_mask, [img_mask.shape[0],img_mask.shape[1],1])
+        img_mask = np.reshape(img_mask, [img_mask.shape[0], img_mask.shape[1], 1])
 
         if self.options.show_face_masking:
             result = (1 - img_mask) * frame.astype(np.float32)
             return np.uint8(result)
 
-
         target = target.astype(np.float32)
-        result = (1-img_mask) * target
+        result = (1 - img_mask) * target
         result += img_mask * frame.astype(np.float32)
         return np.uint8(result)
 

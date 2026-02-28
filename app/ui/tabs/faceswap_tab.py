@@ -39,21 +39,21 @@ manual_masking = False
 
 
 def save_current_settings(
-                            max_dist, 
-                            blend, 
-                            enhancer, 
-                            erosion, 
-                            blur, 
-                            steps, 
-                            autorot, 
-                            skip_aud, 
-                            noface_act, 
-                            vrmode, 
-                            preview_swap, 
-                            mask_engine, 
-                            upscale, 
-                            grounding #14
-                            ):
+        max_dist, 
+        blend, 
+        enhancer, 
+        erosion, 
+        blur, 
+        steps, 
+        autorot, 
+        skip_aud, 
+        noface_act, 
+        vrmode, 
+        preview_swap, 
+        mask_engine, 
+        upscale, 
+        grounding #14
+        ):
     try:
         roop.globals.CFG.max_face_distance  = max_dist
         roop.globals.CFG.blend_ratio        = blend
@@ -69,6 +69,8 @@ def save_current_settings(
         roop.globals.CFG.selected_mask_engine = mask_engine
         roop.globals.CFG.subsample_upscale = upscale
         roop.globals.CFG.grounding_prompt = grounding #14
+
+        print(f"[UI DEBUG] Saved grounding_prompt = '{roop.globals.CFG.grounding_prompt}'")
 
         roop.globals.CFG.save()
         return "Settings saved to config.yaml"
@@ -209,7 +211,7 @@ def faceswap_tab():
                                 interactive=True
                             )
                             grounding_prompt = gr.Textbox(
-                                value="face, exclude tongue, exclude hair, exclude glasses",
+                                value="facial skin, nose, lips, teeth, eyes, eyebrows, ears",
                                 label="GroundedSAM Prompt",
                                 placeholder="Describe the face region to mask",
                                 visible=True,  # visible by default
