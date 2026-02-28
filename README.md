@@ -83,7 +83,7 @@ The app should open in your browser at `http://127.0.0.1:7860`.
 | Problem                            | Likely Cause                              | Solution |
 |------------------------------------|-------------------------------------------|----------|
 | Grey box / empty face              | Overscaled paste at high subsample        | Use 512px max; cap in ProcessMgr.py if needed |
-| "Not using" enhancer message       | Missing model file                        | Download GPEN/CodeFormer .pth files → place in `/app/models/` |
+| "Not using" enhancer message       | Missing model file                        | Download GPEN .pth files → place in `/app/models/` |
 | Crash on 1024px                    | Tiling / alignment overflow               | Capped to 512px in code — safe fallback |
 | Slow processing                    | High subsample + video length             | Use In-Memory mode, lower subsample to 256px, or fewer threads |
 | No "Face Quality Mode" dropdown    | Not added to faceswap_tab.py              | Add `gr.Dropdown` as shown in earlier instructions |

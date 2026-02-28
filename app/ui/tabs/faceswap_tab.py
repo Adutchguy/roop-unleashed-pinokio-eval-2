@@ -39,8 +39,21 @@ manual_masking = False
 
 
 def save_current_settings(
-    max_dist, blend, enhancer, erosion, blur, steps, autorot, skip_aud, noface_act, vrmode, preview_swap, mask_engine, upscale
-):
+                            max_dist, 
+                            blend, 
+                            enhancer, 
+                            erosion, 
+                            blur, 
+                            steps, 
+                            autorot, 
+                            skip_aud, 
+                            noface_act, 
+                            vrmode, 
+                            preview_swap, 
+                            mask_engine, 
+                            upscale, 
+                            grounding #14
+                            ):
     try:
         roop.globals.CFG.max_face_distance  = max_dist
         roop.globals.CFG.blend_ratio        = blend
@@ -55,6 +68,7 @@ def save_current_settings(
         roop.globals.CFG.preview_swap_enabled = preview_swap
         roop.globals.CFG.selected_mask_engine = mask_engine
         roop.globals.CFG.subsample_upscale = upscale
+        roop.globals.CFG.grounding_prompt = grounding #14
 
         roop.globals.CFG.save()
         return "Settings saved to config.yaml"
@@ -74,6 +88,7 @@ def reset_to_saved_settings():
         roop.globals.num_swap_steps     = roop.globals.CFG.num_swap_steps
         roop.globals.autorotate_faces   = roop.globals.CFG.autorotate
         roop.globals.skip_audio         = roop.globals.CFG.skip_audio
+        roop.globals.grounding_prompt   = roop.globals.CFG.grounding_prompt
 
         # Removed the two problematic lines
         # roop.globals.no_face_action = roop.globals.CFG.no_face_action   # ← not in Settings
@@ -91,7 +106,8 @@ def reset_to_saved_settings():
             roop.globals.CFG.skip_audio,
             roop.globals.CFG.preview_swap_enabled,
             roop.globals.CFG.selected_mask_engine,
-            roop.globals.CFG.subsample_upscale
+            roop.globals.CFG.subsample_upscale,
+            roop.globals.CFG.grounding_prompt
             # Removed two None placeholders
         )
     except Exception as e:
@@ -182,9 +198,29 @@ def faceswap_tab():
                                 "Toggle manual masking", variant="secondary", size="sm"
                             )
                             selected_mask_engine = gr.Dropdown(
-                                ["None", "Clip2Seg", "DFL XSeg"],
+                                ["None", "Clip2Seg", "DFL XSeg", "GroundedSAM"],
                                 value=roop.globals.selected_mask_engine,   # ← use saved value on startup
                                 label="Face masking engine",
+                            )
+                            video_segmentation = gr.Dropdown(
+                                ["None", "Cutie"],  # ← new dropdown for video consistency
+                                value="Cutie",
+                                label="Video Segmentation for Consistency",
+                                interactive=True
+                            )
+                            grounding_prompt = gr.Textbox(
+                                value="face, exclude tongue, exclude hair, exclude glasses",
+                                label="GroundedSAM Prompt",
+                                placeholder="Describe the face region to mask",
+                                visible=False,  # hidden by default
+                                interactive=True
+                            )
+
+                            # Show/hide the prompt box when mask engine changes
+                            selected_mask_engine.change(
+                                fn=lambda x: gr.update(visible=(x == "GroundedSAM")),
+                                inputs=selected_mask_engine,
+                                outputs=grounding_prompt
                             )
                             clip_text = gr.Textbox(
                                 label="List of objects to mask and restore back on fake face",
@@ -302,8 +338,27 @@ def faceswap_tab():
                 resultimage = gr.Image(type='filepath', label='Final Image', interactive=False )
                 resultvideo = gr.Video(label='Final Video', interactive=False, visible=False)
 
-    previewinputs = [preview_frame_num, bt_destfiles, fake_preview, ui.globals.ui_selected_enhancer, selected_face_detection,
-                 max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text, no_face_action, vr_mode, autorotate, maskimage, chk_showmaskoffsets, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale, ui.globals.ui_face_quality]
+    previewinputs = [
+                        preview_frame_num, 
+                        bt_destfiles, 
+                        fake_preview, 
+                        ui.globals.ui_selected_enhancer, 
+                        selected_face_detection,
+                        max_face_distance, 
+                        ui.globals.ui_blend_ratio, 
+                        selected_mask_engine, 
+                        clip_text, 
+                        no_face_action, 
+                        vr_mode, autorotate, 
+                        maskimage, 
+                        chk_showmaskoffsets, 
+                        chk_restoreoriginalmouth, 
+                        num_swap_steps, 
+                        ui.globals.ui_upscale, 
+                        ui.globals.ui_face_quality, 
+                        video_segmentation,
+                        grounding_prompt  #19
+                     ]
     previewoutputs = [previewimage, maskimage, preview_frame_num] 
     input_faces.select(on_select_input_face, None, None).success(fn=on_preview_frame_changed, inputs=previewinputs, outputs=previewoutputs)
     
@@ -342,8 +397,25 @@ def faceswap_tab():
     bt_preview_mask.click(fn=on_preview_mask, inputs=[preview_frame_num, bt_destfiles, clip_text, selected_mask_engine], outputs=[previewimage]) 
 
     start_event = bt_start.click(fn=start_swap, 
-        inputs=[output_method, ui.globals.ui_selected_enhancer, selected_face_detection, roop.globals.keep_frames, roop.globals.wait_after_extraction,
-            roop.globals.skip_audio, max_face_distance, ui.globals.ui_blend_ratio, selected_mask_engine, clip_text,video_swapping_method, no_face_action, vr_mode, autorotate, chk_restoreoriginalmouth, num_swap_steps, ui.globals.ui_upscale, maskimage, ui.globals.ui_face_quality],
+        inputs=[
+                    output_method,
+                    ui.globals.ui_selected_enhancer, 
+                    selected_face_detection, 
+                    roop.globals.keep_frames, 
+                    roop.globals.wait_after_extraction, 
+                    roop.globals.skip_audio, 
+                    max_face_distance, 
+                    ui.globals.ui_blend_ratio, 
+                    selected_mask_engine,
+                    clip_text,video_swapping_method, 
+                    no_face_action, vr_mode, autorotate,  
+                    chk_restoreoriginalmouth, num_swap_steps, 
+                    ui.globals.ui_upscale, 
+                    maskimage, 
+                    ui.globals.ui_face_quality, 
+                    video_segmentation,
+                    grounding_prompt, #17
+                ],
         outputs=[bt_start, bt_stop, resultfiles], show_progress='full')
     after_swap_event = start_event.success(fn=on_resultfiles_finished, inputs=[resultfiles], outputs=[resultimage, resultvideo])
 
@@ -361,21 +433,22 @@ def faceswap_tab():
     save_settings_btn.click(
         fn=save_current_settings,
         inputs=[
-        max_face_distance,               # current slider value
-        ui.globals.ui_blend_ratio,       # current blend slider value
-        ui.globals.ui_selected_enhancer, # current dropdown selection
-        mask_erosion,
-        mask_blur,
-        num_swap_steps,
-        autorotate,
-        roop.globals.skip_audio,
-        no_face_action,
-        vr_mode,
-        fake_preview,
-        selected_mask_engine,
-        ui.globals.ui_upscale
-    ],
-        outputs=settings_status
+                    max_face_distance,               # current slider value
+                    ui.globals.ui_blend_ratio,       # current blend slider value
+                    ui.globals.ui_selected_enhancer, # current dropdown selection
+                    mask_erosion,
+                    mask_blur,
+                    num_swap_steps,
+                    autorotate,
+                    roop.globals.skip_audio,
+                    no_face_action,
+                    vr_mode,
+                    fake_preview,
+                    selected_mask_engine,
+                    ui.globals.ui_upscale,
+                    grounding_prompt #14
+                ],
+                    outputs=settings_status
     )
 
     reset_settings_btn.click(
@@ -392,7 +465,8 @@ def faceswap_tab():
             roop.globals.skip_audio,
             fake_preview,
             selected_mask_engine,
-            ui.globals.ui_upscale
+            ui.globals.ui_upscale,
+            grounding_prompt #13
         ]
     )
 
@@ -641,8 +715,27 @@ def on_end_face_selection():
     return gr.Column(visible=False), None
 
 
-def on_preview_frame_changed(frame_num, files, fake_preview, enhancer, detection, face_distance, blend_ratio,
-                              selected_mask_engine, clip_text, no_face_action, vr_mode, auto_rotate, maskimage, show_face_area, restore_original_mouth, num_steps, upsample, face_quality):
+def on_preview_frame_changed(frame_num, 
+                             files, 
+                             fake_preview, 
+                             enhancer, 
+                             detection, 
+                             face_distance, 
+                             blend_ratio,
+                             selected_mask_engine, 
+                             clip_text, 
+                             no_face_action, 
+                             vr_mode, 
+                             auto_rotate, 
+                             maskimage, 
+                             show_face_area, 
+                             restore_original_mouth, 
+                             num_steps, 
+                             upsample, 
+                             face_quality,
+                             video_segmentation, 
+                             grounding_prompt  #20
+                             ):
     global SELECTED_INPUT_FACE_INDEX, manual_masking, current_video_fps
 
     from roop.core import live_swap, get_processing_plugins
@@ -718,9 +811,23 @@ def on_preview_frame_changed(frame_num, files, fake_preview, enhancer, detection
     if len(roop.globals.INPUT_FACESETS) <= face_index:
         face_index = 0
    
-    options = ProcessOptions(get_processing_plugins(mask_engine), roop.globals.distance_threshold, roop.globals.blend_ratio,
-                        roop.globals.face_swap_mode, face_index, clip_text, maskimage, num_steps, roop.globals.subsample_size, show_face_area, restore_original_mouth,
-                        face_quality=face_quality)
+    options = ProcessOptions(
+        get_processing_plugins(mask_engine), 
+        roop.globals.distance_threshold, 
+        roop.globals.blend_ratio,
+        roop.globals.face_swap_mode, 
+        face_index, 
+        clip_text, 
+        maskimage, 
+        num_steps, 
+        roop.globals.subsample_size, 
+        #show_face_area, 
+        False,
+        restore_original_mouth,
+        face_quality=face_quality,
+        video_segmentation=video_segmentation, 
+        grounding_prompt=grounding_prompt #14
+        )
     
     current_frame = live_swap(current_frame, options)
     if current_frame is None:
@@ -829,8 +936,29 @@ def translate_swap_mode(dropdown_text):
     return "all"
 
 
-def start_swap( output_method, enhancer, detection, keep_frames, wait_after_extraction, skip_audio, face_distance, blend_ratio,
-                selected_mask_engine, clip_text, processing_method, no_face_action, vr_mode, autorotate, restore_original_mouth, num_swap_steps, upsample, imagemask, face_quality, progress=gr.Progress()):
+def start_swap(output_method, 
+               enhancer, 
+               detection, 
+               keep_frames, 
+               wait_after_extraction, 
+               skip_audio, 
+               face_distance, 
+               blend_ratio,
+               selected_mask_engine, 
+               clip_text, 
+               processing_method, 
+               no_face_action, 
+               vr_mode, 
+               autorotate, 
+               restore_original_mouth, 
+               num_swap_steps, 
+               upsample, 
+               imagemask, 
+               face_quality, 
+               grounding_prompt,
+               video_segmentation,
+               progress=gr.Progress()
+               ):
     from ui.main import prepare_environment
     from roop.core import batch_process_regular
     global is_processing, list_files_process
@@ -893,7 +1021,21 @@ def start_swap( output_method, enhancer, detection, keep_frames, wait_after_extr
     roop.globals.video_quality = roop.globals.CFG.video_quality
     roop.globals.max_memory = roop.globals.CFG.memory_limit if roop.globals.CFG.memory_limit > 0 else None
 
-    batch_process_regular(output_method, list_files_process, mask_engine, clip_text, processing_method == "In-Memory processing", imagemask, restore_original_mouth, num_swap_steps, progress, SELECTED_INPUT_FACE_INDEX)
+    batch_process_regular(
+        output_method, 
+        list_files_process, 
+        mask_engine, 
+        clip_text, 
+        processing_method == "In-Memory processing", 
+        imagemask, 
+        restore_original_mouth, 
+        num_swap_steps, 
+        progress, 
+        SELECTED_INPUT_FACE_INDEX, 
+        face_quality, 
+        grounding_prompt, 
+        video_segmentation
+        )
     is_processing = False
     outdir = pathlib.Path(roop.globals.output_path)
     outfiles = [str(item) for item in outdir.rglob("*") if item.is_file()]

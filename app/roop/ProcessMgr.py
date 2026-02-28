@@ -1,4 +1,6 @@
 import os
+
+from requests import options
 import cv2 
 import numpy as np
 import psutil
@@ -83,7 +85,6 @@ class ProcessMgr():
     'faceswap'          : 'FaceSwapInsightFace',
     'mask_clip2seg'     : 'Mask_Clip2Seg',
     'mask_xseg'         : 'Mask_XSeg',
-    'codeformer'        : 'Enhance_CodeFormer',
     'gfpgan'            : 'Enhance_GFPGAN',
     'dmdnet'            : 'Enhance_DMDNet',
     'gpen'              : 'Enhance_GPEN',
@@ -91,7 +92,9 @@ class ProcessMgr():
     'colorizer'         : 'Frame_Colorizer',
     'filter_generic'    : 'Frame_Filter',
     'removebg'          : 'Frame_Masking',
-    'upscale'           : 'Frame_Upscale'
+    'upscale'           : 'Frame_Upscale',
+    'mask_groundedsam'  : 'Mask_GroundedSAM',
+    'video_cutie'       : 'Video_Cutie'
     }
 
     def __init__(self, progress):
@@ -123,6 +126,8 @@ class ProcessMgr():
             if newp is None:
                 p.Release()
                 del p
+        print("Available plugins keys:", list(self.plugins.keys()))
+        print("Attempting to load processors for:", list(options.processors.keys()))
 
         newprocessors = []
         for key, extoption in options.processors.items():
@@ -130,6 +135,7 @@ class ProcessMgr():
             if p is None:
                 classname = self.plugins[key]
                 module = 'roop.processors.' + classname
+                print(f"Trying to load plugin key '{key}' → class '{self.plugins.get(key, 'MISSING')}'")
                 p = str_to_class(module, classname)
             if p is not None:
                 extoption.update({"devicename": devicename})
@@ -236,7 +242,25 @@ class ProcessMgr():
                     resimg = frame
                 else:                            
                     resimg = self.process_frame(frame)
-                self.processed_queue[threadindex].put((True, resimg))
+                
+                # Apply video segmentation (Cutie) if enabled and we have multiple frames
+                if hasattr(self.options, 'video_segmentation') and self.options.video_segmentation == "Cutie":
+                    video_processor = next((p for p in self.processors if p.processorname == 'video_cutie'), None)
+                    if video_processor is not None:
+                        try:
+                            # Placeholder initial mask (improve with real face mask)
+                            initial_mask = np.zeros(frame.shape[:2], dtype=np.uint8)
+                            if len(self.input_face_datas) > 0:
+                                face = self.input_face_datas[0].faces[0]
+                                bbox = face.bbox.astype(int)
+                                initial_mask[bbox[1]:bbox[3], bbox[0]:bbox[2]] = 255
+                            # Apply Cutie (needs all frames — this is placeholder)
+                            output_mask = video_processor.Run([frame], initial_mask)[0]
+                            frame = cv2.bitwise_and(frame, frame, mask=output_mask)
+                        except Exception as e:
+                            print(f"Cutie failed on frame: {e}")
+                
+                self.processed_queue[threadindex].put((True, frame))
                 del frame
                 progress()
 
@@ -637,6 +661,22 @@ class ProcessMgr():
         if rotation_action is not None:
             fake_frame = self.auto_unrotate_frame(result, rotation_action)
             result = self.paste_simple(fake_frame, saved_frame, startX, startY)
+        
+        # Optional: Apply Cutie on single frame for preview (limited benefit)
+        if hasattr(self.options, 'video_segmentation') and self.options.video_segmentation == "Cutie":
+            video_processor = next((p for p in self.processors if p.processorname == 'video_cutie'), None)
+            if video_processor is not None:
+                try:
+                    initial_mask = np.zeros(result.shape[:2], dtype=np.uint8)
+                    # Simple face mask (improve this!)
+                    if len(self.input_face_datas) > 0:
+                        face = self.input_face_datas[0].faces[0]
+                        bbox = face.bbox.astype(int)
+                        initial_mask[bbox[1]:bbox[3], bbox[0]:bbox[2]] = 255
+                    output_mask = video_processor.Run([result], initial_mask)[0]
+                    result = cv2.bitwise_and(result, result, mask=output_mask)
+                except Exception as e:
+                    print(f"Cutie preview failed: {e}")
         
         return result
 
