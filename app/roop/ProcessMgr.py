@@ -93,7 +93,6 @@ class ProcessMgr():
     'filter_generic'    : 'Frame_Filter',
     'removebg'          : 'Frame_Masking',
     'upscale'           : 'Frame_Upscale',
-    'mask_groundedsam'  : 'Mask_GroundedSAM',
     'video_cutie'       : 'Video_Cutie'
     }
 
@@ -590,7 +589,6 @@ class ProcessMgr():
         enhancer_strength = 0.6  # default
         if hasattr(self.options, 'face_quality') and self.options.face_quality:
             mode = self.options.face_quality
-            print(f"Applying Face Quality Mode: {mode}")
             if mode == "Ultra":
                 subsample_size = 512          # Cap at 512 — 1024 often causes paste artefacts
                 enhancer_strength = 1.0
@@ -614,8 +612,6 @@ class ProcessMgr():
             subsample_size = 512
 
         subsample_total = subsample_size // model_output_size
-
-        print(f"Final: Subsample {subsample_size}px, Tiles {subsample_total}x{subsample_total}, Strength {enhancer_strength}")
 
         aligned_img, M = align_crop(frame, target_face.kps, subsample_size)
 
@@ -814,28 +810,24 @@ class ProcessMgr():
         return final_frame
 
     def process_mask(self, processor, frame:Frame, target:Frame):
-        # Choose the appropriate text/prompt based on the current mask engine
         engine = roop.globals.CFG.selected_mask_engine or "None"
         
-        if engine == "GroundedSAM":
-            text_input = self.options.grounding_prompt if hasattr(self.options, 'grounding_prompt') else "face"
-        else:
-            # For Clip2Seg, DFL XSeg, or others that use the older masking_text field
-            text_input = self.options.masking_text if hasattr(self.options, 'masking_text') else ""
+        # Use the old/standard field for Clip2Seg and DFL XSeg
+        text_input = self.options.masking_text if hasattr(self.options, 'masking_text') else ""
         
-        # Debug print to confirm what's being passed (remove later if desired)
-        print(f"[DEBUG ProcessMgr.process_mask] Engine: {engine} | Passing input: '{text_input}' to {processor.processorname}")
-        
-        # Call the processor with the string input (not the full options object)
+        # Run the mask processor
         img_mask = processor.Run(frame, text_input)
         
+        # Resize and reshape mask
         img_mask = cv2.resize(img_mask, (target.shape[1], target.shape[0]))
         img_mask = np.reshape(img_mask, [img_mask.shape[0], img_mask.shape[1], 1])
 
+        # Show mask overlay if enabled
         if self.options.show_face_masking:
             result = (1 - img_mask) * frame.astype(np.float32)
             return np.uint8(result)
 
+        # Standard blending
         target = target.astype(np.float32)
         result = (1 - img_mask) * target
         result += img_mask * frame.astype(np.float32)

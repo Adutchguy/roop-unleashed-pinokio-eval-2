@@ -248,24 +248,19 @@ def start() -> None:
 
 def get_processing_plugins(masking_engine):
     processors = {"faceswap": {}}
-    
-    processors["mask_groundedsam"] = {}
-    print("[FORCE DEBUG] Added mask_groundedsam regardless of UI selection")
 
     if masking_engine and masking_engine != "None":
         # Map UI dropdown label → actual plugin key used in ProcessMgr.plugins
         mask_map = {
             "Clip2Seg":    "mask_clip2seg",
             "DFL XSeg":    "mask_xseg",
-            "GroundedSAM": "mask_groundedsam",
-            # Add any future engines here, e.g. "CustomSAM": "mask_customsam"
+            # Add any future engines here
         }
         
         plugin_key = mask_map.get(masking_engine, None)
         
         if plugin_key and plugin_key in ProcessMgr.plugins:
             processors[plugin_key] = {}
-            print(f"[DEBUG core] Added mask processor '{plugin_key}' for UI engine '{masking_engine}'")
         else:
             print(f"[WARNING core] No valid plugin mapping or unknown engine '{masking_engine}' — no mask processor loaded")
 
