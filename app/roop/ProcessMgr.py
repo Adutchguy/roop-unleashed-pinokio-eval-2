@@ -259,7 +259,7 @@ class ProcessMgr():
                         except Exception as e:
                             print(f"Cutie failed on frame: {e}")
                 
-                self.processed_queue[threadindex].put((True, frame))
+                self.processed_queue[threadindex].put((True, resimg))
                 del frame
                 progress()
 
@@ -817,21 +817,41 @@ class ProcessMgr():
         
         # Run the mask processor
         img_mask = processor.Run(frame, text_input)
+
+        # CRITICAL: Normalize mask to 0–255 uint8
+        if img_mask.dtype != np.uint8:
+            if img_mask.max() <= 1.0:  # float 0–1 range (common with some models)
+                img_mask = (img_mask * 255).astype(np.uint8)
+            else:
+                img_mask = img_mask.astype(np.uint8)
         
+        # Optional: threshold to make mask binary/stronger (adjust threshold 80–150)
+        _, img_mask = cv2.threshold(img_mask, 127, 255, cv2.THRESH_BINARY)
+
+        # Feather edges (reduces green patches/seams)
+        img_mask = cv2.GaussianBlur(img_mask.astype(np.float32), (15, 15), 0)  # 15–31 kernel size
+        img_mask = np.clip(img_mask, 0, 255).astype(np.uint8)
+
+        # Slight dilation to close holes and cover seams
+        kernel = np.ones((5, 5), np.uint8)
+        img_mask = cv2.dilate(img_mask, kernel, iterations=2)
+
         # Resize and reshape mask
         img_mask = cv2.resize(img_mask, (target.shape[1], target.shape[0]))
         img_mask = np.reshape(img_mask, [img_mask.shape[0], img_mask.shape[1], 1])
 
-        # Show mask overlay if enabled
+        # Show mask overlay if enabled (debug mode)
         if self.options.show_face_masking:
             result = (1 - img_mask) * frame.astype(np.float32)
             return np.uint8(result)
 
-        # Standard blending
+        # Standard blending with proper alpha
         target = target.astype(np.float32)
-        result = (1 - img_mask) * target
-        result += img_mask * frame.astype(np.float32)
-        return np.uint8(result)
+        alpha = img_mask.astype(np.float32) / 255.0  # 0.0–1.0 float alpha
+        result = (1 - alpha) * target + alpha * frame.astype(np.float32)
+        result = np.clip(result, 0, 255).astype(np.uint8)
+
+        return result
 
 
     # Code for mouth restoration adapted from https://github.com/iVideoGameBoss/iRoopDeepFaceCam

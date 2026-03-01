@@ -810,7 +810,6 @@ def on_preview_frame_changed(frame_num,
     return gr.Image(value=util.convert_to_gradio(current_frame), visible=True), gr.ImageEditor(visible=False), gr.Slider(info=timeinfo)
 
 def map_mask_engine(selected_mask_engine, clip_text):
-    print(f"[MASK DEBUG] UI selected engine: '{selected_mask_engine}'")
 
     if selected_mask_engine == "None":
         return None
@@ -823,7 +822,6 @@ def map_mask_engine(selected_mask_engine, clip_text):
     if selected_mask_engine == "DFL XSeg":
         return "mask_xseg"
 
-    print(f"[MASK DEBUG] Unknown engine '{selected_mask_engine}' — no mask")
     return None
 
 
