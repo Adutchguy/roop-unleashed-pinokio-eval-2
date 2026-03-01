@@ -250,21 +250,25 @@ def get_processing_plugins(masking_engine):
     processors = {"faceswap": {}}
 
     if masking_engine and masking_engine != "None":
-        # Map UI dropdown label → actual plugin key used in ProcessMgr.plugins
-        mask_map = {
-            "Clip2Seg":    "mask_clip2seg",
-            "DFL XSeg":    "mask_xseg",
-            # Add any future engines here
-        }
-        
-        plugin_key = mask_map.get(masking_engine, None)
-        
-        if plugin_key and plugin_key in ProcessMgr.plugins:
-            processors[plugin_key] = {}
+        # First, check if masking_engine is already an internal plugin key
+        if masking_engine in ProcessMgr.plugins:
+            processors[masking_engine] = {}
+            print(f"[DEBUG core] Added mask processor '{masking_engine}' (direct internal key)")
         else:
-            print(f"[WARNING core] No valid plugin mapping or unknown engine '{masking_engine}' — no mask processor loaded")
+            # Fallback: treat as UI label and map to internal key
+            mask_map = {
+                "Clip2Seg":    "mask_clip2seg",
+                "DFL XSeg":    "mask_xseg",
+                # GroundedSAM removed during scrub
+            }
+            plugin_key = mask_map.get(masking_engine, None)
+            if plugin_key and plugin_key in ProcessMgr.plugins:
+                processors[plugin_key] = {}
+                print(f"[DEBUG core] Added mask processor '{plugin_key}' via UI label map")
+            else:
+                print(f"[WARNING core] No valid plugin mapping for '{masking_engine}' — no mask loaded")
 
-    # Enhancer logic (unchanged from your version)
+    # Enhancer logic (unchanged)
     if roop.globals.selected_enhancer == 'GFPGAN':
         processors.update({"gfpgan": {}})
     elif roop.globals.selected_enhancer == 'DMDNet':
@@ -273,8 +277,7 @@ def get_processing_plugins(masking_engine):
         processors.update({"gpen": {}})
     elif roop.globals.selected_enhancer == 'Restoreformer++':
         processors.update({"restoreformer++": {}})
-        
-    # Fallback / lower-case check (your existing safety net — keep if you want)
+
     enhancer_key = roop.globals.selected_enhancer.lower()
     if enhancer_key in ProcessMgr.plugins:
         processors.update({enhancer_key: {}})
@@ -301,7 +304,7 @@ def live_swap(frame, options):
     return newframe
 
 
-def batch_process_regular(output_method, files:list[ProcessEntry], masking_engine:str, new_clip_text:str, use_new_method, imagemask, restore_original_mouth, num_swap_steps, progress, selected_index = 0, face_quality=None, grounding_prompt="face", video_segmentation="None") -> None:
+def batch_process_regular(output_method, files:list[ProcessEntry], masking_engine:str, new_clip_text:str, use_new_method, imagemask, restore_original_mouth, num_swap_steps, progress, selected_index = 0, face_quality=None, video_segmentation="None") -> None:
     global clip_text, process_mgr
 
     release_resources()
@@ -324,7 +327,6 @@ def batch_process_regular(output_method, files:list[ProcessEntry], masking_engin
         False,  # show_face_area (keep as False or adjust if you have UI for this)
         restore_original_mouth,
         face_quality=face_quality,
-        grounding_prompt=grounding_prompt,
         video_segmentation=video_segmentation
     )
     process_mgr.initialize(roop.globals.INPUT_FACESETS, roop.globals.TARGET_FACES, options)
