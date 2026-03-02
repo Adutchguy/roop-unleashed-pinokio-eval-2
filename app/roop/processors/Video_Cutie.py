@@ -10,7 +10,7 @@ import roop.globals
 class Video_Cutie:
     processorname = 'video_cutie'
     type = 'video'
-
+    print(f"DEBUG: cutie module was loaded in some capacity)")
     def __init__(self):
         self.cutie_model = None
         self.device = None
